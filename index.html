@@ -50,13 +50,14 @@ a{color:inherit;}
 @media (max-width:760px){ .wrap{padding:0 22px;} }
 
 /* Framed sections keep a left reading column; open sections use the
-   full wrap for grids/tables. Every numbered section still reserves a
-   little room on the right for the tracker so it never overlaps
-   content -- more room in Intro, where the tracker stays large. */
+   full wrap for grids/tables. Left side: the rail is fixed at
+   left:38px and its active label can grow up to ~190px wide, so every
+   numbered section reserves a flat clamp() of clearance for it. */
 .frame-col{max-width:600px;}
 @media (min-width:981px){
-  #intro .wrap{padding-right:clamp(190px, 22vw, 340px);}
-  section[data-dial-index]:not(#intro) .wrap{padding-right:clamp(100px, 13vw, 170px);}
+  section[data-dial-index] .wrap{
+    padding-left: clamp(300px, 6vw, 340px);
+  }
 }
 
 .kicker{
@@ -110,44 +111,6 @@ hr.rule{border:none; border-top:1px solid var(--line); margin:0;}
 #mobile-progress-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--sage),var(--lime));}
 @media (max-width:980px){ #mobile-progress{display:block;} }
 
-/* ================= THE FORM (right-hand tracker) =================
-   One persistent fixed shape. It never leaves the DOM or changes
-   parent. On desktop, its size/position/opacity are recalculated every
-   frame in JS as a continuous function of scroll position (see
-   updateTrackerPosition) rather than snapping between discrete CSS
-   states -- every section-to-section move is centered on the boundary
-   itself, so it's exactly half-finished right where the two sections
-   meet, never a sharp cut. Right-edge targets are anchored to the same
-   1180px content grid as the rest of the page (not a bare viewport %),
-   so it holds a constant distance from the text instead of floating
-   independently of it. On mobile it's just a small fixed badge. */
-#tracker{
-  position:fixed;
-  z-index:45;
-  width:200px; height:200px;
-  right:max(24px, calc((100vw - 1180px) / 2 + 164px));
-  top:calc(50vh - 100px);
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .6s ease;
-}
-#tracker.is-visible{opacity:.95;}
-
-/* A slow, constant breathing scale, independent of any position change --
-   the one thing about it that's never abrupt, always alive. */
-.tracker-vessel{animation:tracker-breathe 5.5s ease-in-out infinite;}
-@keyframes tracker-breathe{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.035);} }
-@media (prefers-reduced-motion: reduce){ .tracker-vessel{animation:none;} }
-
-@media (max-width:980px){
-  #tracker{width:50px; height:50px; right:16px; top:auto; bottom:16px;}
-}
-
-.tracker-vessel{
-  position:relative; width:100%; height:100%;
-  filter:drop-shadow(0 10px 22px rgba(21,34,24,.30));
-}
-#tracker-canvas{display:block; width:100%; height:100%;}
 
 /* ================= LEFT SECTION RAIL ================= */
 #rail{
@@ -164,9 +127,13 @@ hr.rule{border:none; border-top:1px solid var(--line); margin:0;}
   white-space:nowrap; max-width:0; overflow:hidden; opacity:0; transition:max-width .35s ease, opacity .35s ease;
 }
 #rail:hover .label,#rail .rail-item.active .label{max-width:220px; opacity:1;}
-#rail.rail-dark .dot{background:var(--cream-white);}
-#rail.rail-dark .label{color:var(--cream-white);}
-#rail.rail-dark .rail-item.active .dot{background:var(--lime); box-shadow:0 0 0 4px rgba(169,209,74,0.22);}
+/* Each dot/label flips independently based on what's actually behind
+   *that item* (see updateRailTheme), not one reading for the whole
+   rail -- a dark section boundary can land mid-rail, so a single
+   sample point was going stale for whichever half it didn't cover. */
+#rail .rail-item.item-dark .dot{background:var(--cream-white);}
+#rail .rail-item.item-dark .label{color:var(--cream-white);}
+#rail .rail-item.item-dark.active .dot{background:var(--lime); box-shadow:0 0 0 4px rgba(169,209,74,0.22);}
 #rail-vine{position:absolute; left:2.5px; top:4px; width:2px; height:calc(100% - 8px); background:rgba(30,51,35,0.14); z-index:-1;}
 #rail.rail-dark #rail-vine{background:rgba(246,241,231,0.16);}
 #rail-vine-fill{width:100%; height:0%; background:linear-gradient(var(--sage),var(--lime)); transition:height .15s ease-out;}
@@ -195,9 +162,16 @@ header#top .contact-mini{font-family:var(--mono); font-size:12px; letter-spacing
 #hero-textstack{position:relative; z-index:3; display:grid; width:100%;}
 .scene-text{
   grid-row:1; grid-column:1;
-  max-width:700px; padding-left:calc((100% - 1180px) / 2 + 48px); padding-right:24px; will-change:opacity, transform;
+  /* Matches section[data-dial-index] .wrap's left clearance (same
+     rail, same overlap risk) so the hero's headline lines up with
+     every section that follows it instead of sitting further left.
+     max-width is border-box (global *{box-sizing:border-box}), so it
+     has to grow along with padding-left or the reading column itself
+     gets squeezed down to almost nothing -- 700px was sized for the
+     old, much smaller padding. */
+  max-width:960px; padding-left:calc((100% - 1180px) / 2 + clamp(300px, 6vw, 340px)); padding-right:24px; will-change:opacity, transform;
 }
-@media (max-width:1280px){ .scene-text{padding-left:48px; max-width:580px;} }
+@media (max-width:980px){ .scene-text{padding-left:48px; max-width:580px;} }
 @media (max-width:760px){ .scene-text{padding-left:22px; padding-right:22px; max-width:100%;} }
 .scene-text.phase-reveal{opacity:0;}
 
@@ -363,12 +337,6 @@ footer#site-footer a:hover{color:var(--lime);}
 
 <div id="rail" class="rail-dark">
   <div id="rail-vine"><div id="rail-vine-fill"></div></div>
-</div>
-
-<div id="tracker" data-phase="hero" aria-hidden="true">
-  <div class="tracker-vessel">
-    <canvas id="tracker-canvas"></canvas>
-  </div>
 </div>
 
 <header id="top">
@@ -1093,211 +1061,11 @@ window.addEventListener('load', () => {
   attachTilt('.ops-cell', 5);
 });
 
-// ================= THE MEASURE + LEFT RAIL =================
-// Two quiet, complementary readouts instead of one busy instrument:
-// the rail on the left marks *which* of the 8 sections you're in,
-// the vessel on the right just fills, continuously, with how far
-// through the whole proposal you've read. Neither shows a number.
-const trackerEl = document.getElementById('tracker');
+// ================= THE LEFT RAIL =================
+// Marks *which* of the 8 sections you're in as you scroll. Doesn't
+// show a number.
 const railEl = document.getElementById('rail');
 const railVineFill = document.getElementById('rail-vine-fill');
-
-// ---------- Geometry: point -> line -> two lines -> triangle ->
-// tetrahedron -> cube -> octahedron -> icosahedron. Each stage gains a
-// dimension or a face count over the last; the reading gains dimension
-// as it goes. Vertices are hand-specified per shape; edges are derived
-// automatically from faces so a 30-edge icosahedron never has to be
-// typed out by hand (and can't get a typo'd edge as a result).
-const PHI = (1 + Math.sqrt(5)) / 2;
-function normalizeVerts(verts){
-  const maxLen = verts.reduce((m, v) => Math.max(m, Math.hypot(v[0], v[1], v[2])), 0) || 1;
-  return verts.map(v => [v[0] / maxLen, v[1] / maxLen, v[2] / maxLen]);
-}
-function edgesFromFaces(faces){
-  const seen = new Set(), edges = [];
-  faces.forEach(f => f.forEach((a, i) => {
-    const b = f[(i + 1) % f.length];
-    const key = a < b ? `${a}_${b}` : `${b}_${a}`;
-    if(!seen.has(key)){ seen.add(key); edges.push([Math.min(a,b), Math.max(a,b)]); }
-  }));
-  return edges;
-}
-const RAW_STAGES = [
-  { verts:[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]], faces:[[0,1,2],[0,1,3],[0,2,3],[1,2,3]] },
-  { verts:[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],
-    faces:[[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]] },
-  { verts:[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],
-    faces:[[0,2,4],[0,4,3],[0,3,5],[0,5,2],[1,4,2],[1,3,4],[1,5,3],[1,2,5]] },
-  { verts:[[-1,PHI,0],[1,PHI,0],[-1,-PHI,0],[1,-PHI,0],[0,-1,PHI],[0,1,PHI],[0,-1,-PHI],[0,1,-PHI],[PHI,0,-1],[PHI,0,1],[-PHI,0,-1],[-PHI,0,1]],
-    faces:[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]] }
-];
-const STAGES = RAW_STAGES.map(s => ({
-  verts: normalizeVerts(s.verts),
-  faces: s.faces,
-  edges: s.faces.length ? edgesFromFaces(s.faces) : s.edges
-}));
-
-const trackerCanvas = document.getElementById('tracker-canvas');
-const trackerCtx = trackerCanvas.getContext('2d');
-let trackerLastScrollY = window.scrollY;
-let shapeVelocity = 0;     // smoothed scroll velocity, so momentum-scroll jitter doesn't jerk it
-let shapeRotY = 0.5;       // start slightly turned, not face-on/edge-on
-let shapeRotX = 0.35;
-let currentStageIdx = 0;   // the shape is always drawn fully opaque, never blended with another
-let stagePulseT0 = 0;      // timestamp of the last stage change, drives a brief scale pop
-let trackerLastSize = 0;
-
-function resizeTrackerCanvas(size){
-  if(Math.abs(size - trackerLastSize) < 0.5) return;
-  trackerLastSize = size;
-  const dpr = window.devicePixelRatio || 1;
-  trackerCanvas.width = size * dpr;
-  trackerCanvas.height = size * dpr;
-  trackerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-
-function projectVertex(v, rotY, rotX, scale, cx, cy){
-  const x1 = v[0]*Math.cos(rotY) - v[2]*Math.sin(rotY);
-  const z1 = v[0]*Math.sin(rotY) + v[2]*Math.cos(rotY);
-  const y1 = v[1]*Math.cos(rotX) - z1*Math.sin(rotX);
-  const z2 = v[1]*Math.sin(rotX) + z1*Math.cos(rotX);
-  const focal = 3.4;
-  const persp = focal / (focal + z2);
-  return { x: cx + x1*scale*persp, y: cy + y1*scale*persp, z: z2 };
-}
-function shadeColor(t, alpha){
-  const forest=[30,51,35], sage=[91,154,61], lime=[169,209,74];
-  const [c1,c2] = t < 0.5 ? [forest,sage] : [sage,lime];
-  const k = t < 0.5 ? t/0.5 : (t-0.5)/0.5;
-  const r=lerp(c1[0],c2[0],k), g=lerp(c1[1],c2[1],k), b=lerp(c1[2],c2[2],k);
-  return `rgba(${r|0},${g|0},${b|0},${alpha.toFixed(3)})`;
-}
-
-function drawStage(stage, rotY, rotX, scale, cx, cy, alpha){
-  if(alpha <= 0.01) return;
-  const pts = stage.verts.map(v => projectVertex(v, rotY, rotX, scale, cx, cy));
-
-  if(stage.faces.length){
-    const ordered = stage.faces
-      .map(f => ({ f, avgZ: f.reduce((s,i) => s + pts[i].z, 0) / f.length }))
-      .sort((a,b) => a.avgZ - b.avgZ);
-    ordered.forEach(({ f, avgZ }) => {
-      const shade = clamp01((avgZ + 1) / 2);
-      trackerCtx.beginPath();
-      f.forEach((idx, i) => { const p = pts[idx]; i === 0 ? trackerCtx.moveTo(p.x,p.y) : trackerCtx.lineTo(p.x,p.y); });
-      trackerCtx.closePath();
-      trackerCtx.fillStyle = shadeColor(shade, (0.5 + shade*0.4) * alpha);
-      trackerCtx.fill();
-      trackerCtx.strokeStyle = `rgba(169,209,74,${(0.3 + shade*0.35) * alpha})`;
-      trackerCtx.lineWidth = 1;
-      trackerCtx.stroke();
-    });
-  } else {
-    stage.edges.forEach(([a,b]) => {
-      const p1 = pts[a], p2 = pts[b];
-      trackerCtx.beginPath(); trackerCtx.moveTo(p1.x,p1.y); trackerCtx.lineTo(p2.x,p2.y);
-      trackerCtx.strokeStyle = `rgba(169,209,74,${0.85*alpha})`;
-      trackerCtx.lineWidth = 2.4;
-      trackerCtx.stroke();
-    });
-    pts.forEach(p => {
-      trackerCtx.beginPath(); trackerCtx.arc(p.x, p.y, 3.4, 0, Math.PI*2);
-      trackerCtx.fillStyle = `rgba(169,209,74,${alpha})`;
-      trackerCtx.fill();
-    });
-  }
-}
-
-function updateTrackerVisual(docProgress){
-  const scrollY = window.scrollY;
-  const rawVelocity = scrollY - trackerLastScrollY;
-  trackerLastScrollY = scrollY;
-  shapeVelocity = lerp(shapeVelocity, rawVelocity, 0.35);
-
-  // Turns right scrolling down, left scrolling up, plus a slow constant
-  // tumble on the other axis so it's never fully still.
-  shapeRotY += shapeVelocity * 0.011;
-  shapeRotX += 0.0025;
-
-  const rect = trackerEl.getBoundingClientRect();
-  const size = Math.max(20, Math.min(rect.width, rect.height));
-  resizeTrackerCanvas(size);
-  trackerCtx.clearRect(0, 0, size, size);
-
-  const stagePos = clamp01(docProgress) * (STAGES.length - 1);
-  const nextStageIdx = clamp(Math.round(stagePos), 0, STAGES.length - 1);
-  if(nextStageIdx !== currentStageIdx){
-    currentStageIdx = nextStageIdx;
-    stagePulseT0 = performance.now();
-  }
-  const cx = size/2, cy = size/2;
-
-  // Always one shape, always fully opaque -- two different polyhedra
-  // don't share vertices, so cross-fading between them just looked like
-  // a muddy double exposure, and fading through zero read as the whole
-  // thing disappearing. Instead each new stage arrives with a quick,
-  // fully-opaque scale pop that eases back to rest -- gains a dimension,
-  // doesn't dissolve into one.
-  const pulseT = clamp01((performance.now() - stagePulseT0) / 480);
-  const pulseScale = 1 + (1 - easeInOut(pulseT)) * 0.16;
-  const scale = size * 0.36 * pulseScale;
-  drawStage(STAGES[currentStageIdx], shapeRotY, shapeRotX, scale, cx, cy, 1);
-}
-
-// Continuous, scroll-linked size/position for every section outside
-// the hero, chained across all 8 section boundaries in one pass: each
-// section's target is lerped in using how far its own top edge has
-// crossed the viewport's vertical center, over a window wide enough
-// that it's exactly half-finished right where the two sections
-// actually meet -- never a discrete jump. It stays fully visible the
-// entire time (it should never read as disappearing); the only thing
-// that changes near the closing statement and the footer is that it
-// shrinks and tucks into the corner, gradually, so it clears real
-// content without ever fading out.
-function updateTrackerPosition(){
-  trackerEl.classList.add('is-visible');
-  if(window.innerWidth < 981) return;
-
-  const vh = window.innerHeight;
-  const refLine = vh * 0.5;
-  const windowSize = Math.max(220, vh * 0.65);
-  const crossT = (top) => clamp01((refLine - top) / windowSize + 0.5);
-
-  const anchors = {
-    close: Math.max(24, (window.innerWidth - 1180) / 2 + 164),
-    wideTuck: Math.max(20, (window.innerWidth - 1180) / 2 - 10),
-    medium: Math.max(24, (window.innerWidth - 1180) / 2 + 34)
-  };
-  const targetFor = (idx) => {
-    if(idx === 1) return { right: anchors.close, size: 200 };
-    if(idx === 2 || idx === 3) return { right: anchors.wideTuck, size: 200 };
-    return { right: anchors.medium, size: 92 };
-  };
-
-  let right = targetFor(1).right;
-  let size = targetFor(1).size;
-  for(let i = 1; i < sectionEls.length; i++){
-    const t = crossT(sectionEls[i].getBoundingClientRect().top);
-    const tgt = targetFor(i + 1);
-    right = lerp(right, tgt.right, t);
-    size = lerp(size, tgt.size, t);
-  }
-
-  // The closing statement sits between two sections that are already
-  // "medium," so it naturally stays that size too -- no separate dip.
-  // Only the footer itself, further below, pulls it into the corner.
-  const footerRect = footerEl.getBoundingClientRect();
-  const footerInfluence = crossT(footerRect.top);
-
-  right = lerp(right, 26, footerInfluence);
-  size = lerp(size, 24, footerInfluence);
-  const top = lerp((vh - size) / 2, vh - size - 26, footerInfluence);
-
-  trackerEl.style.right = right.toFixed(1) + 'px';
-  trackerEl.style.width = size.toFixed(1) + 'px';
-  trackerEl.style.height = size.toFixed(1) + 'px';
-  trackerEl.style.top = top.toFixed(1) + 'px';
-}
 
 const heroTrackEl = document.getElementById('hero-track');
 const closingTrackEl = document.getElementById('closing-track');
@@ -1339,12 +1107,25 @@ const sectionObserver = new IntersectionObserver((entries) => {
 sectionEls.forEach(el => sectionObserver.observe(el));
 
 function updateRailTheme(){
-  const railRect = railEl.getBoundingClientRect();
-  const cy = railRect.top + railRect.height / 2;
-  const el = document.elementFromPoint(Math.min(window.innerWidth - 2, 60), cy);
-  if(!el) return;
-  const darkAncestor = el.closest('.on-dark, #hero-track, #closing-track');
-  railEl.classList.toggle('rail-dark', !!darkAncestor);
+  if(!railItems.length) return;
+  const sampleX = Math.min(window.innerWidth - 2, 60);
+  // Hide the rail itself while sampling -- otherwise elementFromPoint
+  // can hit the rail's own dot/label (especially the active item's
+  // expanded label) instead of the real page content behind it,
+  // which is exactly what let the theme go stale in some spots.
+  const prevVisibility = railEl.style.visibility;
+  railEl.style.visibility = 'hidden';
+  let activeIsDark = false;
+  railItems.forEach((item) => {
+    const rect = item.getBoundingClientRect();
+    const cy = rect.top + rect.height / 2;
+    const el = document.elementFromPoint(sampleX, cy);
+    const isDark = !!(el && el.closest('.on-dark, #hero-track, #closing-track'));
+    item.classList.toggle('item-dark', isDark);
+    if(item.classList.contains('active')) activeIsDark = isDark;
+  });
+  railEl.style.visibility = prevVisibility;
+  railEl.classList.toggle('rail-dark', activeIsDark);
 }
 
 function updateScrollFX(){
@@ -1356,12 +1137,10 @@ function updateScrollFX(){
 
   document.getElementById('mobile-progress-fill').style.width = (docProgress * 100) + '%';
   railVineFill.style.height = (docProgress * 100) + '%';
-  updateTrackerVisual(docProgress);
   updateRailTheme();
 
   const heroRect = heroTrackEl.getBoundingClientRect();
   const closingRect = closingTrackEl.getBoundingClientRect();
-  const trackerIsMobile = window.innerWidth < 981;
   const inHero = heroRect.top <= 0 && heroRect.bottom > window.innerHeight * 0.05;
   const inClosing = closingRect.top <= 0 && closingRect.bottom > window.innerHeight * 0.05;
 
@@ -1376,21 +1155,6 @@ function updateScrollFX(){
     phaseHeroText.style.transform = `translateY(${(-heroLocal * 90).toFixed(1)}px)`;
     phaseRevealText.style.opacity = String(revealOpacity);
     phaseRevealText.style.transform = `translateY(${(lerp(20, -10, clamp01(revealIn))).toFixed(1)}px)`;
-
-    // Opens tucked near the true edge, then slides into place toward the
-    // text -- landing at the same "close" position Intro uses -- right as
-    // "Theological schools..." arrives. Scrubbed frame-by-frame with
-    // scroll, not a discrete jump, so there's no seam handing off to the
-    // continuous per-section system below once hero ends.
-    if(!trackerIsMobile){
-      const settleT = easeInOut(clamp01(heroLocal / 0.20));
-      const edgeRight = Math.max(24, (window.innerWidth - 1180) / 2 + 34);
-      const closeRight = Math.max(24, (window.innerWidth - 1180) / 2 + 164);
-      const heroTopPct = lerp(47, 50, settleT);
-      trackerEl.style.right = lerp(edgeRight, closeRight, settleT).toFixed(1) + 'px';
-      trackerEl.style.top = ((heroTopPct / 100) * window.innerHeight - 100).toFixed(1) + 'px';
-      trackerEl.classList.add('is-visible');
-    }
   } else if(inClosing){
     const closingLocal = clamp01(-closingRect.top / Math.max(1, closingRect.height - window.innerHeight));
     const holdIn = clamp01((closingLocal - 0.20) / 0.20);
@@ -1398,15 +1162,12 @@ function updateScrollFX(){
     closingTextEl.style.opacity = String(clamp01(holdIn - holdOut));
     closingTextEl.style.transform = `translateY(${lerp(16, 0, holdIn).toFixed(1)}px)`;
   }
-
-  if(!inHero) updateTrackerPosition();
  } catch(err) {
   console.error('updateScrollFX error', err);
  } finally {
   requestAnimationFrame(updateScrollFX);
  }
 }
-trackerEl.classList.add('is-visible');
 requestAnimationFrame(updateScrollFX);
 
 </script>
