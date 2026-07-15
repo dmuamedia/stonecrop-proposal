@@ -55,7 +55,7 @@ a{color:inherit;}
    numbered section reserves a flat clamp() of clearance for it. */
 .frame-col{max-width:600px;}
 @media (min-width:981px){
-  section[data-dial-index] .wrap{
+  section[data-dial-index] .wrap, #hero-textstack.wrap{
     padding-left: clamp(300px, 6vw, 340px);
   }
 }
@@ -167,17 +167,16 @@ header#top .contact-mini{font-family:var(--mono); font-size:12px; letter-spacing
 #hero-textstack{position:relative; z-index:3; display:grid; width:100%;}
 .scene-text{
   grid-row:1; grid-column:1;
-  /* Matches section[data-dial-index] .wrap's left clearance (same
-     rail, same overlap risk) so the hero's headline lines up with
-     every section that follows it instead of sitting further left.
-     max-width is border-box (global *{box-sizing:border-box}), so it
-     has to grow along with padding-left or the reading column itself
-     gets squeezed down to almost nothing -- 700px was sized for the
-     old, much smaller padding. */
-  max-width:960px; padding-left:calc((100% - 1180px) / 2 + clamp(300px, 6vw, 340px)); padding-right:24px; will-change:opacity, transform;
+  /* Left clearance now comes from #hero-textstack.wrap (same clamp()
+     rail clearance as section[data-dial-index] .wrap), so this only
+     needs to cap the reading width -- it no longer has to replicate
+     the wrap's centering math itself, which used to grow unbounded
+     with viewport width and could squeeze the column to nothing on
+     very wide screens. */
+  max-width:700px; will-change:opacity, transform;
 }
-@media (max-width:980px){ .scene-text{padding-left:48px; max-width:580px;} }
-@media (max-width:760px){ .scene-text{padding-left:22px; padding-right:22px; max-width:100%;} }
+@media (max-width:980px){ .scene-text{max-width:580px;} }
+@media (max-width:760px){ .scene-text{max-width:100%;} }
 .scene-text.phase-reveal{opacity:0;}
 
 .scene-eyebrow{font-family:var(--mono); font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--lime); margin-bottom:22px;}
@@ -352,7 +351,7 @@ footer#site-footer a:hover{color:var(--lime);}
       <div class="contact-mini">DOUGLAS R. MacGRAY, JD, CFP&reg; &nbsp;&middot;&nbsp; (610) 628&#8209;0035</div>
     </header>
 
-    <div id="hero-textstack">
+    <div id="hero-textstack" class="wrap">
       <div class="scene-text phase-hero">
         <div class="scene-eyebrow">Endowment Management Proposal &middot; February 2026</div>
         <h1>A proposal to steward what God has entrusted to <em>Gordon&nbsp;Conwell</em>.</h1>
